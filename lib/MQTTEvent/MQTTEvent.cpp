@@ -108,7 +108,7 @@ void MQTTEvent::onCallBackPIRDetected() {
 void MQTTEvent::onCallBackPIRNotDetected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
-  
+    doc["message"] = "onCallBackPIRNotDetected";
     char payload[256];
     serializeJson(doc, payload);
 

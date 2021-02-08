@@ -26,7 +26,7 @@ void PIR::loop() {
     } else {
         delay(200);  // delay 200 milliseconds
 
-        if (PIR::state == HIGH) {
+        if (PIR::state == HIGH) { 
             Serial.println("Motion stopped!");
             MQTTEvent::onCallBackPIRNotDetected();
             PIR::state = LOW;  // update variable state to LOW
