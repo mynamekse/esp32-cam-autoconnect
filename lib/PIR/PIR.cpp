@@ -1,5 +1,6 @@
 #include "PIR.h"
 #include "MQTTEvent.h"
+#include "Timer.h"
 int PIR::pin;
 int PIR::value;
 int PIR::state;
@@ -16,7 +17,7 @@ void PIR::loop() {
     // Serial.println(PIR::value);
     if (PIR::value == HIGH) {
         delay(100);  // delay 100 milliseconds
-
+        // Timer::timeLoop(0,100);
         if (PIR::state == LOW) {
             Serial.println((String)"Motion detected! " + millis());
             PIR::cb_detect();
@@ -24,8 +25,8 @@ void PIR::loop() {
             PIR::state = HIGH;  // update variable state to HIGH
         }
     } else {
-        delay(200);  // delay 200 milliseconds
-
+        delay(200);
+        // Timer::timeLoop(0,200);
         if (PIR::state == HIGH) { 
             Serial.println("Motion stopped!");
             MQTTEvent::onCallBackPIRNotDetected();

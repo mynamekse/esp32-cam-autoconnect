@@ -26,6 +26,7 @@ class MQTTEvent {
     static void onCallBackStream(JsonObject payload_json, unsigned int length);
     static void onCallBackPIRDetected();
     static void onCallBackPIRNotDetected();
+    static void onCallBackDeviceRestart();
     static void setSubScribe();
 };
 

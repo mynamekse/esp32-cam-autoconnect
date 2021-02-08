@@ -13,21 +13,20 @@ void MQTTEvent::callback(char *topic, byte *payload, unsigned int length) {
     if (payload_json["mac_address"] != MQTTEvent::WiFi->macAddress() && payload_json["mac_address"] != "all") return;
 
     Serial.println("MQTTEvent::topic is " + String(topic));
-
     if (String(topic) == "device/led") {
         MQTTEvent::onCallBackDeviceLED(payload_json, length);
     }
-
     if (String(topic) == "device/camera/take-image") {
         MQTTEvent::oncallBackTakeImage(payload_json, length);
     }
-
     if (String(topic) == "device/camera/stream") {
         MQTTEvent::onCallBackStream(payload_json, length);
     }
-
     if (String(topic) == "device/scan-connect") {
         MQTTEvent::onDeviceConnected();
+    }
+    if (String(topic) == "device/restart") {
+        MQTTEvent::onCallBackDeviceRestart();
     }
 }
 
@@ -37,6 +36,7 @@ void MQTTEvent::setSubScribe() {
     MQTTEvent::mqttClient->subscribe("device/camera/stream");
     MQTTEvent::mqttClient->subscribe("device/config");
     MQTTEvent::mqttClient->subscribe("device/scan-connect");
+    MQTTEvent::mqttClient->subscribe("device/restart");
 }
 void MQTTEvent::onCallBackDeviceLED(JsonObject payload_json, unsigned int length) {
     StaticJsonDocument<256> doc;
@@ -97,6 +97,7 @@ void MQTTEvent::onCallBackPIRDetected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
     // doc["ip_address"] = MQTTEvent::WiFi->localIP();
+    // doc["message"] = "onCallBackPIRNotDetected";
     char payload[256];
     serializeJson(doc, payload);
 
@@ -108,11 +109,23 @@ void MQTTEvent::onCallBackPIRDetected() {
 void MQTTEvent::onCallBackPIRNotDetected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
-    doc["message"] = "onCallBackPIRNotDetected";
+    // doc["message"] = "onCallBackPIRNotDetected";
     char payload[256];
     serializeJson(doc, payload);
 
     // Serial.println(payload);
     Serial.println("MQTTEvent:onCallBackPIRDetected");
     MQTTEvent::mqttClient->publish("device/not-detected", payload);
+}
+
+void MQTTEvent::onCallBackDeviceRestart() {
+    StaticJsonDocument<256> doc;
+    doc["mac_address"] = MQTTEvent::WiFi->macAddress();
+    // doc["message"] = "onCallBackPIRNotDetected";
+    char payload[256];
+    serializeJson(doc, payload);
+
+    Serial.println("MQTTEvent:device/restart");
+    ESP.restart();
+    MQTTEvent::mqttClient->publish("device/restart", payload);
 }
