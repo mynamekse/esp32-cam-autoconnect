@@ -2,8 +2,8 @@
 #ifndef MQTTEvent_H
 #define MQTTEvent_H
 #include <ArduinoJson.h>
+#include <ESP32Camera.h>
 #include <PubSubClient.h>
-
 #include <WiFi.h>
 class MQTTEvent {
    public:
@@ -16,7 +16,7 @@ class MQTTEvent {
     static bool enableCamera;
     static bool enablePIR;
     static bool ledState;
-    
+
     static void callback(char *topic, byte *payload, unsigned int length);
     static void onCallBackDeviceLED(JsonObject payload_json, unsigned int length);
     static void addSubscribe(std::function<void(int)> callback);
@@ -24,9 +24,9 @@ class MQTTEvent {
     static void onCallBackSetConfig(JsonObject payload_json, unsigned int length);
     static void oncallBackTakeImage(JsonObject payload_json, unsigned int length);
     static void onCallBackStream(JsonObject payload_json, unsigned int length);
-    static void onCallPIRDetected();
+    static void onCallBackPIRDetected();
+    static void onCallBackPIRNotDetected();
     static void setSubScribe();
-   
 };
 
 #endif

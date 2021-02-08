@@ -24,6 +24,7 @@ https://opensource.org/licenses/MIT
 #define GET_CHIPID() ((uint16_t)(ESP.getEfuseMac() >> 32))
 #endif
 #include <AutoConnect.h>
+#include <ESP32Camera.h>
 #include <MQTTEvent.h>
 #include <PubSubClient.h>
 #include <led.h>
@@ -34,6 +35,7 @@ https://opensource.org/licenses/MIT
   whether to use FS.h or LittleFS.h by AUTOCONNECT_USE_SPIFFS definition.
 */
 #include <FS.h>
+#include <PIR.h>
 #if defined(ARDUINO_ARCH_ESP8266)
 #ifdef AUTOCONNECT_USE_SPIFFS
 FS& FlashFS = SPIFFS;
@@ -233,7 +235,10 @@ bool mqttConnect() {
     }
     return false;
 }
-
+void call_backDetect_PIR() {
+    // digitalWrite(4, HIGH);
+    MQTTEvent::onCallBackPIRDetected();
+}
 void mqttPublish(String msg) {
     String path = String("channels/publish");
     mqttClient.publish(path.c_str(), msg.c_str());
@@ -365,8 +370,15 @@ void setup() {
     while (!Serial) {
         ;
     }
+    if (!ESP32Camera::initCamera()) {
+        Serial.printf("Main::Failed to initialize camera...");
+        return;
+    }
     LED::setupPIN(4);
     LED::setupPIN(2);
+    PIR::pin = 12;
+    PIR::setup();
+    PIR::setOnDetact(call_backDetect_PIR);
     Serial.begin(115200);
     Serial.println();
     MQTTEvent::mqttClient = &mqttClient;
@@ -408,6 +420,7 @@ void setup() {
         Serial.println("connected:" + WiFi.SSID());
 
         Serial.println("IP:" + WiFi.localIP().toString());
+
     } else {
         Serial.println("connection failed:" + String(WiFi.status()));
         Serial.println("Needs WiFi connection to start publishing messages");
@@ -434,6 +447,6 @@ void loop() {
             mqttClient.loop();
         }
     }
-
+    PIR::loop();
     portal.handleClient();
 }

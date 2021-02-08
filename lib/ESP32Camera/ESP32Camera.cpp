@@ -1,6 +1,7 @@
 #include "ESP32Camera.h"
 
 #include <WiFi.h>
+#include <base64.h>
 
 #include "Arduino.h"
 #include "esp_camera.h"
@@ -28,6 +29,7 @@
 #define PCLK_GPIO_NUM 22
 #define PART_BOUNDARY "123456789000000000000987654321"
 
+#include <MQTTEvent.h>
 #include <WiFi.h>
 String ESP32Camera::serverIP;
 String ESP32Camera::serverPath = "/upload";
@@ -115,93 +117,43 @@ String ESP32Camera::takeImage() {
     return getBody;
 }
 
-esp_err_t ESP32Camera::stream_handler(httpd_req_t *req) {
+void ESP32Camera::takeImageMQtt() {
     camera_fb_t *fb = NULL;
-    esp_err_t res = ESP_OK;
-    size_t _jpg_buf_len = 0;
-    uint8_t *_jpg_buf = NULL;
-    char *part_buf[64];
-
-    res = httpd_resp_set_type(req, ESP32Camera::_STREAM_CONTENT_TYPE.c_str());
-    if (res != ESP_OK) {
-        return res;
+    fb = esp_camera_fb_get();
+    if (!fb) {
+        Serial.println("Camera capture failed");
+        return;
     }
 
-    while (true) {
-        fb = esp_camera_fb_get();
-        if (!fb) {
-            Serial.println("Camera capture failed");
-            res = ESP_FAIL;
-        } else {
-            if (fb->width > 400) {
-                if (fb->format != PIXFORMAT_JPEG) {
-                    bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-                    esp_camera_fb_return(fb);
-                    fb = NULL;
-                    if (!jpeg_converted) {
-                        Serial.println("JPEG compression failed");
-                        res = ESP_FAIL;
-                    }
-                } else {
-                    _jpg_buf_len = fb->len;
-                    _jpg_buf = fb->buf;
-                }
-            }
-        }
-        if (res == ESP_OK) {
-            size_t hlen = snprintf((char *)part_buf, 64, ESP32Camera::_STREAM_PART.c_str(), _jpg_buf_len);
-            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-        }
-        if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
-        }
-        if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, ESP32Camera::_STREAM_BOUNDARY.c_str(), strlen(ESP32Camera::_STREAM_BOUNDARY.c_str()));
-        }
-        if (fb) {
-            esp_camera_fb_return(fb);
-            fb = NULL;
-            _jpg_buf = NULL;
-        } else if (_jpg_buf) {
-            free(_jpg_buf);
-            _jpg_buf = NULL;
-        }
-        if (res != ESP_OK) {
-            break;
-        }
-        //Serial.printf("MJPG: %uB\n",(uint32_t)(_jpg_buf_len));
+    const char *pic_buf = (const char *)(fb->buf);
+
+    // if (MQTT_MAX_PACKET_SIZE == 128) {
+    //     //SLOW MODE (increase MQTT_MAX_PACKET_SIZE)
+    //     if (MQTTEvent::mqttClient->publish_P("device/image", fb->buf, fb->len, false)) {
+    //         Serial.println("publish_P succcess ");
+    //     }
+
+    // } else {
+    //     //FAST MODE (increase MQTT_MAX_PACKET_SIZE)
+    //     if (MQTTEvent::mqttClient->publish("device/image", fb->buf, fb->len, false)) {
+    //         Serial.println("publish succcess ");
+    //     }
+    // }
+    // MQTTEvent::mqttClient->publish("device/image", pic_buf, fb->len);
+    Serial.println("publish device/image ");
+
+    uint16_t packetIdPubTemp=MQTTEvent::mqttClient->publish("device/image", pic_buf,1024);
+    
+     if (!packetIdPubTemp) {
+        Serial.println("Sending Failed! err: " + String(packetIdPubTemp));
     }
-    return res;
+    else {
+        Serial.println("MQTT Publish succesful");
+    }
+
+    Serial.println("CLIC");
+    esp_camera_fb_return(fb);
 }
-httpd_handle_t ESP32Camera::stream_httpd=NULL;
-
-void ESP32Camera::startCameraServer() {
-    Serial.println("ES32Camera::startCameraServer");
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.server_port = 80;
-
-    httpd_uri_t index_uri = {
-        .uri = "/",
-        .method = HTTP_GET,
-        .handler = ESP32Camera::stream_handler,
-        .user_ctx = NULL};
-
-    //Serial.printf("Starting web server on port: '%d'\n", config.server_port);
-    if (httpd_start(&ESP32Camera::stream_httpd, &config) == ESP_OK) {
-        httpd_register_uri_handler(ESP32Camera::stream_httpd, &index_uri);
-        Serial.println("ES32Camera:: start stream  ok");
-    } else {
-        Serial.println("ES32Camera:: start stream fail");
-    }
-}
-
-void ESP32Camera::stopCameraServer() {
-    if (ESP32Camera::stream_httpd != NULL) {
-        httpd_stop(&ESP32Camera::stream_httpd);
-    }
-
-}
-
 
 String ESP32Camera::_STREAM_CONTENT_TYPE;
 String ESP32Camera::_STREAM_BOUNDARY;
@@ -234,10 +186,9 @@ bool ESP32Camera::initCamera() {
     config.jpeg_quality = 10;
     config.fb_count = 1;
 
-   
-    ESP32Camera::_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
-    ESP32Camera::_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-    ESP32Camera::_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+    // ESP32Camera::_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+    // ESP32Camera::_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+    // ESP32Camera::_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
     if (psramFound()) {
         config.frame_size = FRAMESIZE_SVGA;  // FRAMESIZE_SVGA
@@ -256,8 +207,4 @@ bool ESP32Camera::initCamera() {
     }
 
     return true;
-}
-
-void ESP32Camera::initCameraStream() {
-   
 }

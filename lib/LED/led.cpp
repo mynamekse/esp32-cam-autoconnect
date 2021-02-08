@@ -1,17 +1,20 @@
-#include <led.h>
 #include <Arduino.h>
-
-void  LED::setupPIN(int ledPin) 
-{
-    pinMode(ledPin,OUTPUT);
+#include <led.h>
+bool LED::ledState;
+void LED::setupPIN(int ledPin) {
+    pinMode(ledPin, OUTPUT);
 }
 
-void LED::turnON(int ledPin) 
-{
+void LED::turnON(int ledPin) {
     digitalWrite(ledPin, HIGH);
+    LED::ledState = true;
 }
 
-void LED::turnOff(int ledPin) 
-{
-     digitalWrite(ledPin, LOW);
+void LED::turnOff(int ledPin) {
+    digitalWrite(ledPin, LOW);
+    LED::ledState = false;
+}
+
+bool LED::getStatus() {
+    return LED::ledState;
 }
