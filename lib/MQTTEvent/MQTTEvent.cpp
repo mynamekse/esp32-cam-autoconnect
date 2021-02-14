@@ -43,7 +43,7 @@ void MQTTEvent::onCallBackDeviceLED(JsonObject payload_json, unsigned int length
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
     doc["RSSI"] = MQTTEvent::WiFi->RSSI();
     char payload[256];
-    serializeJson(doc, payload);
+    
     if (payload_json["task"]["led"] == "on") {
         doc["led"] = "on";
         LED::turnON(payload_json["task"]["pin"]);
@@ -55,7 +55,7 @@ void MQTTEvent::onCallBackDeviceLED(JsonObject payload_json, unsigned int length
         LED::turnOff(payload_json["task"]["pin"]);
         // MQTTEvent::ledState = false;
     }
-
+    serializeJson(doc, payload);
     MQTTEvent::mqttClient->publish("device/led/status", payload);
 }
 
@@ -126,6 +126,7 @@ void MQTTEvent::onCallBackDeviceRestart() {
     serializeJson(doc, payload);
 
     Serial.println("MQTTEvent:device/restart");
-    ESP.restart();
     MQTTEvent::mqttClient->publish("device/restart", payload);
+    delay(100);
+    ESP.restart();
 }

@@ -445,8 +445,9 @@ void loop() {
         }
         if (mqttClient.connected()) {
             mqttClient.loop();
+            PIR::loop();
         }
     }
-    PIR::loop();
+
     portal.handleClient();
 }

@@ -182,7 +182,8 @@ bool ESP32Camera::initCamera() {
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
-    config.frame_size = FRAMESIZE_QVGA;
+    config.frame_size = FRAMESIZE_SXGA;
+    //FRAMESIZE_QVGA;
     config.jpeg_quality = 10;
     config.fb_count = 1;
 
@@ -194,6 +195,7 @@ bool ESP32Camera::initCamera() {
         config.frame_size = FRAMESIZE_SVGA;  // FRAMESIZE_SVGA
         config.jpeg_quality = 10;            //0-63 lower number means higher quality 10
         config.fb_count = 2;
+        
     } else {
         config.frame_size = FRAMESIZE_CIF;
         config.jpeg_quality = 12;  //0-63 lower number means higher quality 1
