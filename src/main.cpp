@@ -12,7 +12,7 @@ Copyright (c) 2020 Hieromon Ikasamo.
 This software is released under the MIT License.
 https://opensource.org/licenses/MIT
 */
-
+//dddddddddddddddddddd
 #if defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
@@ -32,7 +32,7 @@ https://opensource.org/licenses/MIT
   AC_USE_SPIFFS indicates SPIFFS or LittleFS as available file systems that
   will become the AUTOCONNECT_USE_SPIFFS identifier and is exported as showng
   the valid file system. After including AutoConnect.h, the Sketch can determine
-  whether to use FS.h or LittleFS.h by AUTOCONNECT_USE_SPIFFS definition.
+  whetherssssssssssssssssssssss to use FS.h or LittleFS.h by AUTOCONNECT_USE_SPIFFS definition.
 */
 #include <FS.h>
 #include <PIR.h>
