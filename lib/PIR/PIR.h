@@ -9,6 +9,8 @@ class PIR {
     static int pin;
     static int state;
     static int value;
+    static bool enable;
+    static bool work;
     static void setup();
     static void setOnDetact(Call_back cb_detect);
     static Call_back cb_detect;

@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string": "cpp",
+			"array": "cpp",
+			"system_error": "cpp",
+			"functional": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"*.tcc": "cpp",
+			"fstream": "cpp",
+			"deque": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"memory": "cpp",
+			"random": "cpp",
+			"regex": "cpp"
+		}
+	}
+}

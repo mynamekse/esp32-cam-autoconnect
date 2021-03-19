@@ -1,6 +1,9 @@
 
 #include <MQTTEvent.h>
 #include <led.h>
+
+#include "PIR.h"
+String MQTTEvent::ip_address;
 PubSubClient *MQTTEvent::mqttClient;
 WiFiClass *MQTTEvent::WiFi;
 
@@ -28,6 +31,9 @@ void MQTTEvent::callback(char *topic, byte *payload, unsigned int length) {
     if (String(topic) == "device/restart") {
         MQTTEvent::onCallBackDeviceRestart();
     }
+    if (String(topic) == "device/config") {
+        MQTTEvent::onCallBackSetConfig(payload_json, length);
+    }
 }
 
 void MQTTEvent::setSubScribe() {
@@ -42,8 +48,9 @@ void MQTTEvent::onCallBackDeviceLED(JsonObject payload_json, unsigned int length
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
     doc["RSSI"] = MQTTEvent::WiFi->RSSI();
+    doc["ip_address"] = MQTTEvent::ip_address;
     char payload[256];
-    
+
     if (payload_json["task"]["led"] == "on") {
         doc["led"] = "on";
         LED::turnON(payload_json["task"]["pin"]);
@@ -63,10 +70,13 @@ void MQTTEvent::onDeviceConnected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
     doc["online"] = "true";
-    doc["ip_address"] = MQTTEvent::WiFi->localIP().toString();
+
+    MQTTEvent::ip_address = MQTTEvent::WiFi->localIP().toString();
+    doc["ip_address"] = MQTTEvent::ip_address;
     // doc["led_state"] = MQTTEvent::ledState;
     doc["RSSI"] = MQTTEvent::WiFi->RSSI();
-
+    doc["PIR:Work"]=PIR::work;
+    doc["LED:State"]=LED::ledState;
     // JsonArray data = doc.createNestedArray("data");
     // data.add(48.756080);
     // data.add(2.302038);
@@ -77,6 +87,28 @@ void MQTTEvent::onDeviceConnected() {
 
     Serial.println("MQTTEvent:onDeviceConnected");
     MQTTEvent::mqttClient->publish("device/connected", payload);
+}
+
+void MQTTEvent::onCallBackSetConfig(JsonObject payload_json, unsigned int length) {
+    if (payload_json["pir"]["work"] == "true") {
+        PIR::work = true;
+        Serial.println("MQTTEvent:onCallBackSetConfig pir::work=true");
+    }
+
+    if (payload_json["pir"]["work"] == "false") {
+        PIR::work = false;
+        Serial.println("MQTTEvent:onCallBackSetConfig pir::work=false");
+    }
+
+    StaticJsonDocument<256> doc;
+    doc["mac_address"] = MQTTEvent::WiFi->macAddress();
+    doc["mac_address"] = MQTTEvent::ip_address;
+    doc["message"] = "onCallBackSetConfig";
+    char payload[256];
+    serializeJson(doc, payload);
+
+    Serial.println("MQTTEvent:onCallBackSetConfig");
+    MQTTEvent::mqttClient->publish("device/config", payload);
 }
 
 void MQTTEvent::oncallBackTakeImage(JsonObject payload_json, unsigned int length) {
@@ -96,8 +128,9 @@ void MQTTEvent::onCallBackStream(JsonObject payload_json, unsigned int length) {
 void MQTTEvent::onCallBackPIRDetected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
-    // doc["ip_address"] = MQTTEvent::WiFi->localIP();
+    doc["ip_address"] = MQTTEvent::ip_address;
     // doc["message"] = "onCallBackPIRNotDetected";
+
     char payload[256];
     serializeJson(doc, payload);
 
@@ -109,6 +142,7 @@ void MQTTEvent::onCallBackPIRDetected() {
 void MQTTEvent::onCallBackPIRNotDetected() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
+    doc["ip_address"] = MQTTEvent::ip_address;
     // doc["message"] = "onCallBackPIRNotDetected";
     char payload[256];
     serializeJson(doc, payload);
@@ -121,6 +155,7 @@ void MQTTEvent::onCallBackPIRNotDetected() {
 void MQTTEvent::onCallBackDeviceRestart() {
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
+    doc["ip_address"] = MQTTEvent::ip_address;
     // doc["message"] = "onCallBackPIRNotDetected";
     char payload[256];
     serializeJson(doc, payload);
