@@ -5,6 +5,7 @@
 #include <ESP32Camera.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include "esp_camera.h"
 class MQTTEvent {
    public:
     static String mac_address;
@@ -16,6 +17,7 @@ class MQTTEvent {
     static bool enableCamera;
     static bool enablePIR;
     static bool ledState;
+    
     static String ip_address;
     static void callback(char *topic, byte *payload, unsigned int length);
     static void onCallBackDeviceLED(JsonObject payload_json, unsigned int length);
@@ -27,7 +29,7 @@ class MQTTEvent {
     static void onCallBackPIRDetected();
     static void onCallBackPIRNotDetected();
     static void onCallBackDeviceRestart();
-    
+    static void onCallBackDeviceControl(JsonObject payload_json, unsigned int length);
     static void setSubScribe();
 };
 

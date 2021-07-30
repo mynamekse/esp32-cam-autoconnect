@@ -9,8 +9,8 @@
 #include "esp_timer.h"
 #include "fb_gfx.h"
 #include "img_converters.h"
-#include "soc/rtc_cntl_reg.h"  //disable brownout problems
-#include "soc/soc.h"           //disable brownout problems
+#include "soc/rtc_cntl_reg.h" //disable brownout problems
+#include "soc/soc.h"          //disable brownout problems
 #define PWDN_GPIO_NUM 32
 #define RESET_GPIO_NUM -1
 #define XCLK_GPIO_NUM 0
@@ -33,23 +33,26 @@
 #include <WiFi.h>
 
 String ESP32Camera::serverIP;
-String ESP32Camera::serverPath = "/upload";
+String ESP32Camera::serverPath;
 const int serverPort = 1880;
 WiFiClient ESP32Camera::wifiClient;
 
-String ESP32Camera::takeImage() {
+String ESP32Camera::takeImage()
+{
     String getAll;
     String getBody;
     PIR::enable = false;
     camera_fb_t *fb = NULL;
     fb = esp_camera_fb_get();
-    if (!fb) {
+    if (!fb)
+    {
         Serial.println("Camera capture failed");
         delay(1000);
         ESP.restart();
     }
     Serial.println("ESP32Camera:before takeImage");
-    if (ESP32Camera::wifiClient.connect(serverIP.c_str(), serverPort)) {
+    if (ESP32Camera::wifiClient.connect(serverIP.c_str(), serverPort))
+    {
         String head = "--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"imageFile\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
         String tail = "\r\n--RandomNerdTutorials--\r\n";
 
@@ -66,11 +69,15 @@ String ESP32Camera::takeImage() {
 
         uint8_t *fbBuf = fb->buf;
         size_t fbLen = fb->len;
-        for (size_t n = 0; n < fbLen; n = n + 1024) {
-            if (n + 1024 < fbLen) {
+        for (size_t n = 0; n < fbLen; n = n + 1024)
+        {
+            if (n + 1024 < fbLen)
+            {
                 ESP32Camera::wifiClient.write(fbBuf, 1024);
                 fbBuf += 1024;
-            } else if (fbLen % 1024 > 0) {
+            }
+            else if (fbLen % 1024 > 0)
+            {
                 size_t remainder = fbLen % 1024;
                 ESP32Camera::wifiClient.write(fbBuf, remainder);
             }
@@ -119,17 +126,21 @@ String ESP32Camera::takeImage() {
         Serial.println("ESP32Camera takeImage:Connection successful!");
         MQTTEvent::mqttClient->publish("device/upload_image_to", payload);
         // Serial.println(getBody);โ
-    } else {
+    }
+    else
+    {
         getBody = "Connection to " + serverIP + " failed.";
         Serial.println(getBody);
     }
     return getBody;
 }
 
-void ESP32Camera::takeImageMQtt() {
+void ESP32Camera::takeImageMQtt()
+{
     camera_fb_t *fb = NULL;
     fb = esp_camera_fb_get();
-    if (!fb) {
+    if (!fb)
+    {
         Serial.println("Camera capture failed");
         return;
     }
@@ -150,12 +161,15 @@ void ESP32Camera::takeImageMQtt() {
     // }
     // MQTTEvent::mqttClient->publish("device/image", pic_buf, fb->len);
     Serial.println("publish device/image ");
+     // String imgDataB64 = base64::encode(fb->buf, fb->len);
+    uint16_t packetIdPubTemp = MQTTEvent::mqttClient->publish("device/image",  fb->buf, fb->len, false);
 
-    uint16_t packetIdPubTemp = MQTTEvent::mqttClient->publish("device/image", pic_buf, 1024);
-
-    if (!packetIdPubTemp) {
+    if (!packetIdPubTemp)
+    {
         Serial.println("Sending Failed! err: " + String(packetIdPubTemp));
-    } else {
+    }
+    else
+    {
         Serial.println("MQTT Publish succesful");
     }
 
@@ -167,7 +181,8 @@ String ESP32Camera::_STREAM_CONTENT_TYPE;
 String ESP32Camera::_STREAM_BOUNDARY;
 String ESP32Camera::_STREAM_PART;
 
-bool ESP32Camera::initCamera() {
+bool ESP32Camera::initCamera()
+{
     camera_config_t config;
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
     config.ledc_channel = LEDC_CHANNEL_0;
@@ -194,11 +209,14 @@ bool ESP32Camera::initCamera() {
     // ESP32Camera::_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
     // ESP32Camera::_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
     // ESP32Camera::_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
-    if (psramFound()) {
+    if (psramFound())
+    {
         config.frame_size = FRAMESIZE_XGA;
         config.jpeg_quality = 10;
         config.fb_count = 2;
-    } else {
+    }
+    else
+    {
         config.frame_size = FRAMESIZE_XGA;
         config.jpeg_quality = 12;
         config.fb_count = 1;
@@ -206,33 +224,41 @@ bool ESP32Camera::initCamera() {
 
     esp_err_t result = esp_camera_init(&config);
 
-    if (result != ESP_OK) {
+    if (result != ESP_OK)
+    {
         return false;
     }
     sensor_t *s = esp_camera_sensor_get();
-    s->set_brightness(s, 1);                  // -2 to 2
-    s->set_contrast(s, 0);                    // -2 to 2
-    s->set_saturation(s, 0);                  // -2 to 2
-    s->set_special_effect(s, 0);              // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 1);                    // 0 = disable , 1 = enable
-    s->set_awb_gain(s, 1);                    // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 0);                     // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    s->set_exposure_ctrl(s, 1);               // 0 = disable , 1 = enable
-    s->set_aec2(s, 0);                        // 0 = disable , 1 = enable
-    s->set_ae_level(s, 0);                    // -2 to 2
-    s->set_aec_value(s, 300);                 // 0 to 1200
-    s->set_gain_ctrl(s, 1);                   // 0 = disable , 1 = enable
-    s->set_agc_gain(s, 0);                    // 0 to 30
-    s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
-    s->set_bpc(s, 0);                         // 0 = disable , 1 = enable
-    s->set_wpc(s, 1);                         // 0 = disable , 1 = enable
-    s->set_raw_gma(s, 1);                     // 0 = disable , 1 = enable
-    s->set_lenc(s, 1);                        // 0 = disable , 1 = enable
-    s->set_hmirror(s, 0);                     // 0 = disable , 1 = enable
+    s->set_brightness(s, 1);                 // -2 to 2
+    s->set_contrast(s, 0);                   // -2 to 2
+    s->set_saturation(s, 0);                 // -2 to 2
+    s->set_special_effect(s, 0);             // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+    s->set_whitebal(s, 1);                   // 0 = disable , 1 = enable
+    s->set_awb_gain(s, 1);                   // 0 = disable , 1 = enable
+    s->set_wb_mode(s, 0);                    // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_exposure_ctrl(s, 1);              // 0 = disable , 1 = enable
+    s->set_aec2(s, 0);                       // 0 = disable , 1 = enable
+    s->set_ae_level(s, 0);                   // -2 to 2
+    s->set_aec_value(s, 300);                // 0 to 1200
+    s->set_gain_ctrl(s, 1);                  // 0 = disable , 1 = enable
+    s->set_agc_gain(s, 0);                   // 0 to 30
+    s->set_gainceiling(s, (gainceiling_t)0); // 0 to 6
+    s->set_bpc(s, 0);                        // 0 = disable , 1 = enable
+    s->set_wpc(s, 1);                        // 0 = disable , 1 = enable
+    s->set_raw_gma(s, 1);                    // 0 = disable , 1 = enable
+    s->set_lenc(s, 1);                       // 0 = disable , 1 = enable
+    s->set_hmirror(s, 0);                    // 0 = disable , 1 = enable
     s->set_vflip(s, 0);
     // 0 = disable , 1 = enable
     //s->set_framesize(s, FRAMESIZE_QVGA);
-    s->set_dcw(s, 1);       // 0 = disable , 1 = enable
-    s->set_colorbar(s, 0);  // 0 = disable , 1 = enable
+    s->set_dcw(s, 1);      // 0 = disable , 1 = enable
+    s->set_colorbar(s, 0); // 0 = disable , 1 = enable
+    if (s->id.PID == OV3660_PID)
+    {
+       
+        s->set_vflip(s, 1);       //flip it back
+        s->set_brightness(s, 1);  //up the blightness just a bit
+        s->set_saturation(s, -2); //lower the saturation
+    }
     return true;
 }

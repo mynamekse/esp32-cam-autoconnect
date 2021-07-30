@@ -1,7 +1,7 @@
 #ifndef PIR_h
 #define PIR_h
 #include <ArduinoJson.h>
-#include <WiFi.h>
+//#include <WiFi.h>
 typedef void (*Call_back)();
 
 class PIR {

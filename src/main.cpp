@@ -26,6 +26,7 @@ https://opensource.org/licenses/MIT
 #include <AutoConnect.h>
 #include <ESP32Camera.h>
 #include <MQTTEvent.h>
+#include <esp32camerahttp.h>
 #include <PubSubClient.h>
 #include <led.h>
 /*
@@ -38,14 +39,14 @@ https://opensource.org/licenses/MIT
 #include <PIR.h>
 #if defined(ARDUINO_ARCH_ESP8266)
 #ifdef AUTOCONNECT_USE_SPIFFS
-FS& FlashFS = SPIFFS;
+FS &FlashFS = SPIFFS;
 #else
 #include <LittleFS.h>
-FS& FlashFS = LittleFS;
+FS &FlashFS = LittleFS;
 #endif
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <SPIFFS.h>
-fs::SPIFFSFS& FlashFS = SPIFFS;
+fs::SPIFFSFS &FlashFS = SPIFFS;
 #endif
 
 #define PARAM_FILE "/param.json"
@@ -200,92 +201,108 @@ unsigned long lastPub = 0;
 
 #define MQTT_USER_ID "anyone"
 
-bool mqttConnect() {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";  // For random generation of client ID.
-    char clientId[9];
+bool mqttConnect()
+{
+  static const char alphanum[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz"; // For random generation of client ID.
+  char clientId[9];
 
-    uint8_t retry = 3;
-    while (!mqttClient.connected()) {
-        if (serverName.length() <= 0)
-            break;
+  uint8_t retry = 3;
+  while (!mqttClient.connected())
+  {
+    if (serverName.length() <= 0)
+      break;
 
-        mqttClient.setServer(serverName.c_str(), 1883);
-        Serial.println(String("Attempting MQTT broker:") + serverName);
+    mqttClient.setServer(serverName.c_str(), 1883);
+    Serial.println(String("Attempting MQTT broker:") + serverName);
 
-        for (uint8_t i = 0; i < 8; i++) {
-            clientId[i] = alphanum[random(62)];
-        }
-        clientId[8] = '\0';
-
-        if (mqttClient.connect(clientId, MQTT_USER_ID, userKey.c_str())) {
-            Serial.println("Established:" + String(clientId));
-            MQTTEvent::onDeviceConnected();
-            MQTTEvent::setSubScribe();
-
-            return true;
-        } else {
-            Serial.println("Connection failed:" + String(mqttClient.state()));
-            if (!--retry)
-                break;
-            delay(3000);
-        }
+    for (uint8_t i = 0; i < 8; i++)
+    {
+      clientId[i] = alphanum[random(62)];
     }
-    return false;
-}
-void call_backDetect_PIR() {
-    // digitalWrite(4, HIGH);
-    MQTTEvent::onCallBackPIRDetected();
-}
-void mqttPublish(String msg) {
-    String path = String("channels/publish");
-    mqttClient.publish(path.c_str(), msg.c_str());
-}
+    clientId[8] = '\0';
 
-int getStrength(uint8_t points) {
-    uint8_t sc = points;
-    long rssi = 0;
+    if (mqttClient.connect(clientId, MQTT_USER_ID, userKey.c_str()))
+    {
+      Serial.println("Established:" + String(clientId));
+      MQTTEvent::onDeviceConnected();
+      MQTTEvent::setSubScribe();
 
-    while (sc--) {
-        rssi += WiFi.RSSI();
-        delay(20);
+      return true;
     }
-    return points ? static_cast<int>(rssi / points) : 0;
+    else
+    {
+      Serial.println("Connection failed:" + String(mqttClient.state()));
+      if (!--retry)
+        break;
+      delay(3000);
+    }
+  }
+  return false;
+}
+void call_backDetect_PIR()
+{
+  // digitalWrite(4, HIGH);
+  MQTTEvent::onCallBackPIRDetected();
+}
+void mqttPublish(String msg)
+{
+  String path = String("channels/publish");
+  mqttClient.publish(path.c_str(), msg.c_str());
 }
 
-void getParams(AutoConnectAux& aux) {
-    serverName = aux["mqttserver"].value;
-    serverName.trim();
-    channelId = aux["channelid"].value;
-    channelId.trim();
-    userKey = aux["userkey"].value;
-    userKey.trim();
-    apiKey = aux["apikey"].value;
-    apiKey.trim();
-    AutoConnectRadio& period = aux["period"].as<AutoConnectRadio>();
-    updateInterval = period.value().substring(0, 2).toInt() * 1000;
-    uniqueid = aux["uniqueid"].as<AutoConnectCheckbox>().checked;
-    hostName = aux["hostname"].value;
-    hostName.trim();
+int getStrength(uint8_t points)
+{
+  uint8_t sc = points;
+  long rssi = 0;
+
+  while (sc--)
+  {
+    rssi += WiFi.RSSI();
+    delay(20);
+  }
+  return points ? static_cast<int>(rssi / points) : 0;
+}
+
+void getParams(AutoConnectAux &aux)
+{
+  serverName = aux["mqttserver"].value;
+  serverName.trim();
+  channelId = aux["channelid"].value;
+  channelId.trim();
+  userKey = aux["userkey"].value;
+  userKey.trim();
+  apiKey = aux["apikey"].value;
+  apiKey.trim();
+  AutoConnectRadio &period = aux["period"].as<AutoConnectRadio>();
+  updateInterval = period.value().substring(0, 2).toInt() * 1000;
+  uniqueid = aux["uniqueid"].as<AutoConnectCheckbox>().checked;
+  hostName = aux["hostname"].value;
+  hostName.trim();
 }
 
 // Load parameters saved with  saveParams from SPIFFS into the
 // elements defined in /mqtt_setting JSON.
-String loadParams(AutoConnectAux& aux, PageArgument& args) {
-    (void)(args);
-    File param = FlashFS.open(PARAM_FILE, "r");
-    if (param) {
-        if (aux.loadElement(param)) {
-            getParams(aux);
-            Serial.println(PARAM_FILE " loaded");
-        } else
-            Serial.println(PARAM_FILE " failed to load");
-        param.close();
-    } else
-        Serial.println(PARAM_FILE " open failed");
-    return String("");
+String loadParams(AutoConnectAux &aux, PageArgument &args)
+{
+  (void)(args);
+  File param = FlashFS.open(PARAM_FILE, "r");
+  if (param)
+  {
+    if (aux.loadElement(param))
+    {
+      getParams(aux);
+      Serial.println(PARAM_FILE " loaded");
+    }
+    else
+      Serial.println(PARAM_FILE " failed to load");
+    param.close();
+  }
+  else
+    Serial.println(PARAM_FILE " open failed");
+  return String("");
 }
 
 // Save the value of each element entered by '/mqtt_setting' to the
@@ -293,161 +310,222 @@ String loadParams(AutoConnectAux& aux, PageArgument& args) {
 // /mqtt_save. When invoking this handler, the input value of each
 // element is already stored in '/mqtt_setting'.
 // In Sketch, you can output to stream its elements specified by name.
-String saveParams(AutoConnectAux& aux, PageArgument& args) {
-    // The 'where()' function returns the AutoConnectAux that caused
-    // the transition to this page.
-    AutoConnectAux& mqtt_setting = *portal.aux(portal.where());
-    getParams(mqtt_setting);
-    AutoConnectInput& mqttserver = mqtt_setting["mqttserver"].as<AutoConnectInput>();
+String saveParams(AutoConnectAux &aux, PageArgument &args)
+{
+  // The 'where()' function returns the AutoConnectAux that caused
+  // the transition to this page.
+  AutoConnectAux &mqtt_setting = *portal.aux(portal.where());
+  getParams(mqtt_setting);
+  AutoConnectInput &mqttserver = mqtt_setting["mqttserver"].as<AutoConnectInput>();
 
-    // The entered value is owned by AutoConnectAux of /mqtt_setting.
-    // To retrieve the elements of /mqtt_setting, it is necessary to get
-    // the AutoConnectAux object of /mqtt_setting.
-    File param = FlashFS.open(PARAM_FILE, "w");
-    mqtt_setting.saveElement(param, {"mqttserver", "channelid", "userkey", "apikey", "uniqueid", "period", "hostname"});
-    param.close();
+  // The entered value is owned by AutoConnectAux of /mqtt_setting.
+  // To retrieve the elements of /mqtt_setting, it is necessary to get
+  // the AutoConnectAux object of /mqtt_setting.
+  File param = FlashFS.open(PARAM_FILE, "w");
+  mqtt_setting.saveElement(param, {"mqttserver", "channelid", "userkey", "apikey", "uniqueid", "period", "hostname"});
+  param.close();
 
-    // Echo back saved parameters to AutoConnectAux page.
-    AutoConnectText& echo = aux["parameters"].as<AutoConnectText>();
-    echo.value = "Server: " + serverName;
-    echo.value += mqttserver.isValid() ? String(" (OK)") : String(" (ERR)");
-    echo.value += "<br>Channel ID: " + channelId + "<br>";
-    echo.value += "User Key: " + userKey + "<br>";
-    echo.value += "API Key: " + apiKey + "<br>";
-    echo.value += "Update period: " + String(updateInterval / 1000) + " sec.<br>";
-    echo.value += "Use APID unique: " + String(uniqueid == true ? "true" : "false") + "<br>";
-    echo.value += "ESP host name: " + hostName + "<br>";
+  // Echo back saved parameters to AutoConnectAux page.
+  AutoConnectText &echo = aux["parameters"].as<AutoConnectText>();
+  echo.value = "Server: " + serverName;
+  echo.value += mqttserver.isValid() ? String(" (OK)") : String(" (ERR)");
+  echo.value += "<br>Channel ID: " + channelId + "<br>";
+  echo.value += "User Key: " + userKey + "<br>";
+  echo.value += "API Key: " + apiKey + "<br>";
+  echo.value += "Update period: " + String(updateInterval / 1000) + " sec.<br>";
+  echo.value += "Use APID unique: " + String(uniqueid == true ? "true" : "false") + "<br>";
+  echo.value += "ESP host name: " + hostName + "<br>";
 
-    return String("");
+  return String("");
 }
 
-void handleRoot() {
-    String content =
-        "<html>"
-        "<head>"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        "</head>"
-        "<body>"
-        "<iframe width=\"450\" height=\"260\" style=\"transform:scale(0.79);-o-transform:scale(0.79);-webkit-transform:scale(0.79);-moz-transform:scale(0.79);-ms-transform:scale(0.79);transform-origin:0 0;-o-transform-origin:0 0;-webkit-transform-origin:0 0;-moz-transform-origin:0 0;-ms-transform-origin:0 0;border: 1px solid #cccccc;\" src=\"https://thingspeak.com/channels/{{CHANNEL}}/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&type=line\"></iframe>"
-        "<p style=\"padding-top:5px;text-align:center\">" AUTOCONNECT_LINK(COG_24)
-            "</p>"
-            "</body>"
-            "</html>";
+void handleRoot()
+{
+  String content =
+      "<html>"
+      "<head>"
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+      "</head>"
+      "<body>"
+      "<iframe width=\"450\" height=\"260\" style=\"transform:scale(0.79);-o-transform:scale(0.79);-webkit-transform:scale(0.79);-moz-transform:scale(0.79);-ms-transform:scale(0.79);transform-origin:0 0;-o-transform-origin:0 0;-webkit-transform-origin:0 0;-moz-transform-origin:0 0;-ms-transform-origin:0 0;border: 1px solid #cccccc;\" src=\"https://thingspeak.com/channels/{{CHANNEL}}/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&type=line\"></iframe>"
+      "<p style=\"padding-top:5px;text-align:center\">" AUTOCONNECT_LINK(COG_24) "</p>"
+                                                                                 "</body>"
+                                                                                 "</html>";
 
-    content.replace("{{CHANNEL}}", channelId);
-    WiFiWebServer& webServer = portal.host();
-    webServer.send(200, "text/html", content);
+  content.replace("{{CHANNEL}}", channelId);
+  WiFiWebServer &webServer = portal.host();
+  webServer.send(200, "text/html", content);
 }
 
 // Clear channel using ThingSpeak's API.
-void handleClearChannel() {
-    HTTPClient httpClient;
+void handleClearChannel()
+{
+  HTTPClient httpClient;
 
-    String endpoint = serverName;
-    endpoint.replace("mqtt", "api");
-    String delUrl = "http://" + endpoint + "/channels/" + channelId + "/feeds.json?api_key=" + userKey;
+  String endpoint = serverName;
+  endpoint.replace("mqtt", "api");
+  String delUrl = "http://" + endpoint + "/channels/" + channelId + "/feeds.json?api_key=" + userKey;
 
-    Serial.print("DELETE " + delUrl);
-    if (httpClient.begin(wifiClient, delUrl)) {
-        Serial.print(":");
-        int resCode = httpClient.sendRequest("DELETE");
-        const String& res = httpClient.getString();
-        Serial.println(String(resCode) + String(",") + res);
-        httpClient.end();
-    } else
-        Serial.println(" failed");
+  Serial.print("DELETE " + delUrl);
+  if (httpClient.begin(wifiClient, delUrl))
+  {
+    Serial.print(":");
+    int resCode = httpClient.sendRequest("DELETE");
+    const String &res = httpClient.getString();
+    Serial.println(String(resCode) + String(",") + res);
+    httpClient.end();
+  }
+  else
+    Serial.println(" failed");
 
-    // Returns the redirect response. The page is reloaded and its contents
-    // are updated to the state after deletion.
-    WiFiWebServer& webServer = portal.host();
-    webServer.sendHeader("Location", String("http://") + webServer.client().localIP().toString() + String("/"));
-    webServer.send(302, "text/plain", "");
-    webServer.client().flush();
-    webServer.client().stop();
+  // Returns the redirect response. The page is reloaded and its contents
+  // are updated to the state after deletion.
+  WiFiWebServer &webServer = portal.host();
+  webServer.sendHeader("Location", String("http://") + webServer.client().localIP().toString() + String("/"));
+  webServer.send(302, "text/plain", "");
+  webServer.client().flush();
+  webServer.client().stop();
 }
+void status_handler()
+{
+  char json_response[1024];
 
-void setup() {
-    while (!Serial) {
-        ;
-    }
-    if (!ESP32Camera::initCamera()) {
-        Serial.printf("Main::Failed to initialize camera...");
-        return;
-    }
-    LED::setupPIN(4);
-    LED::setupPIN(2);
-    PIR::pin = 12;
-    PIR::setup();
-    PIR::setOnDetact(call_backDetect_PIR);
-    Serial.begin(115200);
-    Serial.println();
-    MQTTEvent::mqttClient = &mqttClient;
-    MQTTEvent::mqttClient->setCallback(MQTTEvent::callback);
+  sensor_t *s = esp_camera_sensor_get();
+  char *p = json_response;
+  *p++ = '{';
+
+  p += sprintf(p, "\"framesize\":%u,", s->status.framesize);
+  p += sprintf(p, "\"quality\":%u,", s->status.quality);
+  p += sprintf(p, "\"brightness\":%d,", s->status.brightness);
+  p += sprintf(p, "\"contrast\":%d,", s->status.contrast);
+  p += sprintf(p, "\"saturation\":%d,", s->status.saturation);
+  p += sprintf(p, "\"sharpness\":%d,", s->status.sharpness);
+  p += sprintf(p, "\"special_effect\":%u,", s->status.special_effect);
+  p += sprintf(p, "\"wb_mode\":%u,", s->status.wb_mode);
+  p += sprintf(p, "\"awb\":%u,", s->status.awb);
+  p += sprintf(p, "\"awb_gain\":%u,", s->status.awb_gain);
+  p += sprintf(p, "\"aec\":%u,", s->status.aec);
+  p += sprintf(p, "\"aec2\":%u,", s->status.aec2);
+  p += sprintf(p, "\"ae_level\":%d,", s->status.ae_level);
+  p += sprintf(p, "\"aec_value\":%u,", s->status.aec_value);
+  p += sprintf(p, "\"agc\":%u,", s->status.agc);
+  p += sprintf(p, "\"agc_gain\":%u,", s->status.agc_gain);
+  p += sprintf(p, "\"gainceiling\":%u,", s->status.gainceiling);
+  p += sprintf(p, "\"bpc\":%u,", s->status.bpc);
+  p += sprintf(p, "\"wpc\":%u,", s->status.wpc);
+  p += sprintf(p, "\"raw_gma\":%u,", s->status.raw_gma);
+  p += sprintf(p, "\"lenc\":%u,", s->status.lenc);
+  p += sprintf(p, "\"vflip\":%u,", s->status.vflip);
+  p += sprintf(p, "\"hmirror\":%u,", s->status.hmirror);
+  p += sprintf(p, "\"dcw\":%u,", s->status.dcw);
+  p += sprintf(p, "\"colorbar\":%u,", s->status.colorbar);
+
+  *p++ = '}';
+  *p++ = 0;
+  WiFiWebServer &webServer = portal.host();
+  webServer.send(200, "text/json", json_response);
+}
+void setup()
+{
+  while (!Serial)
+  {
+    ;
+  }
+  if (!ESP32Camera::initCamera())
+  {
+    Serial.printf("Main::Failed to initialize camera...");
+    return;
+  }
+  LED::setupPIN(4);
+  LED::setupPIN(2);
+  PIR::pin = 12;
+  PIR::setup();
+  PIR::setOnDetact(call_backDetect_PIR);
+  Serial.begin(115200);
+  Serial.println();
+  MQTTEvent::mqttClient = &mqttClient;
+  MQTTEvent::mqttClient->setCallback(MQTTEvent::callback);
 
 #if defined(ARDUINO_ARCH_ESP8266)
-    FlashFS.begin();
+  FlashFS.begin();
 #elif defined(ARDUINO_ARCH_ESP32)
-    FlashFS.begin(true);
+  FlashFS.begin(true);
 #endif
 
-    if (portal.load(FPSTR(AUX_mqtt_setting))) {
-        AutoConnectAux& mqtt_setting = *portal.aux(AUX_SETTING_URI);
-        PageArgument args;
-        loadParams(mqtt_setting, args);
-        if (uniqueid) {
-            config.apid = String("ESP") + "-" + String(GET_CHIPID(), HEX);
-            Serial.println("apid set to " + config.apid);
-        }
-        if (hostName.length()) {
-            config.hostName = hostName;
-            Serial.println("hostname set to " + config.hostName);
-        }
-        config.homeUri = "/";
-
-        portal.on(AUX_SETTING_URI, loadParams);
-        portal.on(AUX_SAVE_URI, saveParams);
-    } else
-        Serial.println("load error");
-
-    // Reconnect and continue publishing even if WiFi is disconnected.
-    config.autoReconnect = true;
-    config.reconnectInterval = 1;
-    portal.config(config);
-
-    Serial.print("WiFi ");
-    if (portal.begin()) {
-        config.bootUri = AC_ONBOOTURI_HOME;
-        Serial.println("connected:" + WiFi.SSID());
-
-        Serial.println("IP:" + WiFi.localIP().toString());
-
-    } else {
-        Serial.println("connection failed:" + String(WiFi.status()));
-        Serial.println("Needs WiFi connection to start publishing messages");
+  if (portal.load(FPSTR(AUX_mqtt_setting)))
+  {
+    AutoConnectAux &mqtt_setting = *portal.aux(AUX_SETTING_URI);
+    PageArgument args;
+    loadParams(mqtt_setting, args);
+    if (uniqueid)
+    {
+      config.apid = String("ESP") + "-" + String(GET_CHIPID(), HEX);
+      Serial.println("apid set to " + config.apid);
     }
+    if (hostName.length())
+    {
+      config.hostName = hostName;
+      Serial.println("hostname set to " + config.hostName);
+    }
+    config.homeUri = "/";
 
-    WiFiWebServer& webServer = portal.host();
-    webServer.on("/", handleRoot);
-    webServer.on(AUX_CLEAR_URI, handleClearChannel);
+    portal.on(AUX_SETTING_URI, loadParams);
+    portal.on(AUX_SAVE_URI, saveParams);
+  }
+  else
+    Serial.println("load error");
+
+  // Reconnect and continue publishing even if WiFi is disconnected.
+  config.autoReconnect = true;
+  config.reconnectInterval = 1;
+  portal.config(config);
+
+  Serial.print("WiFi ");
+  if (portal.begin())
+  {
+    config.bootUri = AC_ONBOOTURI_HOME;
+    Serial.println("connected:" + WiFi.SSID());
+
+    Serial.println("IP:" + WiFi.localIP().toString());
+  }
+  else
+  {
+    Serial.println("connection failed:" + String(WiFi.status()));
+    Serial.println("Needs WiFi connection to start publishing messages");
+  }
+
+  WiFiWebServer &webServer = portal.host();
+  //ESP32CameraHTTP::&portal=portal.host();
+  webServer.on("/", handleRoot);
+  webServer.on(AUX_CLEAR_URI, handleClearChannel);
+  webServer.on(F("/status_handler"), HTTP_GET, status_handler);
+  //webServer.on("/capture",HTTP_GET,ESP32CameraHTTP::handleCapture);
+  ESP32CameraHTTP::startServer();
 }
 //eeeeeeeeeeeeeeeeeeeeeee
-void loop() {
-    if (WiFi.status() == WL_CONNECTED) {
-        // MQTT publish control
-        if (updateInterval > 0) {
-            if (millis() - lastPub > updateInterval) {
-                if (!mqttClient.connected()) {
-                    mqttConnect();
-                }
-                String item = String("field1=") + String(getStrength(7));
-                lastPub = millis();
-            }
+void loop()
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    // MQTT publish control
+    if (updateInterval > 0)
+    {
+      if (millis() - lastPub > updateInterval)
+      {
+        if (!mqttClient.connected())
+        {
+          mqttConnect();
         }
-        if (mqttClient.connected()) {
-            mqttClient.loop();
-            PIR::loop();
-        }
+        String item = String("field1=") + String(getStrength(7));
+        lastPub = millis();
+      }
     }
+    if (mqttClient.connected())
+    {
+      mqttClient.loop();
+      PIR::loop();
+    }
+  }
 
-    portal.handleClient();
+  portal.handleClient();
 }
