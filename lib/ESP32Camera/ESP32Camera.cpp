@@ -34,7 +34,7 @@
 
 String ESP32Camera::serverIP;
 String ESP32Camera::serverPath;
-const int serverPort = 1880;
+int ESP32Camera::serverPort ;
 WiFiClient ESP32Camera::wifiClient;
 
 String ESP32Camera::takeImage()
@@ -51,7 +51,7 @@ String ESP32Camera::takeImage()
         ESP.restart();
     }
     Serial.println("ESP32Camera:before takeImage");
-    if (ESP32Camera::wifiClient.connect(serverIP.c_str(), serverPort))
+    if (ESP32Camera::wifiClient.connect(serverIP.c_str(), ESP32Camera::serverPort))
     {
         String head = "--RandomNerdTutorials\r\nContent-Disposition: form-data; name=\"imageFile\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
         String tail = "\r\n--RandomNerdTutorials--\r\n";
@@ -211,7 +211,7 @@ bool ESP32Camera::initCamera()
     // ESP32Camera::_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
     if (psramFound())
     {
-        config.frame_size = FRAMESIZE_XGA;
+        config.frame_size = FRAMESIZE_XGA;  //8-13  VGA SVGA(9 800x600)   XGA(1080)
         config.jpeg_quality = 10;
         config.fb_count = 2;
     }
@@ -229,9 +229,9 @@ bool ESP32Camera::initCamera()
         return false;
     }
     sensor_t *s = esp_camera_sensor_get();
-    s->set_brightness(s, 1);                 // -2 to 2
-    s->set_contrast(s, 0);                   // -2 to 2
-    s->set_saturation(s, 0);                 // -2 to 2
+    s->set_brightness(s, 2);                 // -2 to 2
+    s->set_contrast(s, 2);                   // -2 to 2
+    s->set_saturation(s, 2);                 // -2 to 2
     s->set_special_effect(s, 0);             // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
     s->set_whitebal(s, 1);                   // 0 = disable , 1 = enable
     s->set_awb_gain(s, 1);                   // 0 = disable , 1 = enable

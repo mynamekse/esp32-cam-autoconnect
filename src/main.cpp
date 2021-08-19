@@ -441,6 +441,8 @@ void setup()
   PIR::pin = 12;
   PIR::setup();
   PIR::setOnDetact(call_backDetect_PIR);
+  PIR::enable=true;
+  PIR::work=true;
   Serial.begin(115200);
   Serial.println();
   MQTTEvent::mqttClient = &mqttClient;
@@ -524,6 +526,7 @@ void loop()
     {
       mqttClient.loop();
       PIR::loop();
+    
     }
   }
 

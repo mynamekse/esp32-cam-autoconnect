@@ -8,7 +8,7 @@ class ESP32Camera {
    public:
     static String serverIP;
     static String serverPath;
-
+    static int serverPort;
     static String _STREAM_CONTENT_TYPE;
     static String _STREAM_BOUNDARY;
     static String _STREAM_PART;

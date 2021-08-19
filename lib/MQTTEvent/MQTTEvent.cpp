@@ -204,6 +204,7 @@ void MQTTEvent::oncallBackTakeImage(JsonObject payload_json, unsigned int length
     {
         ESP32Camera::serverIP = payload_json["task"]["upload-server"].as<String>();
         ESP32Camera::serverPath = payload_json["task"]["upload-path"].as<String>();
+        ESP32Camera::serverPort = payload_json["task"]["upload-port"].as<int>();
         ESP32Camera::takeImage();
     }
     else
@@ -242,7 +243,7 @@ void MQTTEvent::onCallBackPIRNotDetected()
     serializeJson(doc, payload);
 
     // Serial.println(payload);
-    Serial.println("MQTTEvent:onCallBackPIRDetected");
+    Serial.println("MQTTEvent:onCallBack Not-detected");
     MQTTEvent::mqttClient->publish("device/not-detected", payload);
 }
 
