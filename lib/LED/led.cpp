@@ -3,6 +3,7 @@
 bool LED::ledState;
 void LED::setupPIN(int ledPin) {
     pinMode(ledPin, OUTPUT);
+    
 }
 
 void LED::turnON(int ledPin) {

@@ -6,8 +6,9 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include "esp_camera.h"
-class MQTTEvent {
-   public:
+class MQTTEvent
+{
+public:
     static String mac_address;
     static PubSubClient *mqttClient;
     static StaticJsonDocument<256> configs;
@@ -17,13 +18,14 @@ class MQTTEvent {
     static bool enableCamera;
     static bool enablePIR;
     static bool ledState;
-    
+
     static String ip_address;
     static void callback(char *topic, byte *payload, unsigned int length);
     static void onCallBackDeviceLED(JsonObject payload_json, unsigned int length);
     static void addSubscribe(std::function<void(int)> callback);
     static void onDeviceConnected();
     static void onCallBackSetConfig(JsonObject payload_json, unsigned int length);
+ 
     static void oncallBackTakeImage(JsonObject payload_json, unsigned int length);
     static void onCallBackStream(JsonObject payload_json, unsigned int length);
     static void onCallBackPIRDetected();

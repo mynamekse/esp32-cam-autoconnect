@@ -12,11 +12,11 @@ class ESP32Camera {
     static String _STREAM_CONTENT_TYPE;
     static String _STREAM_BOUNDARY;
     static String _STREAM_PART;
-    
+    static int timoutTimer;
  
     static WiFiClient wifiClient;
     static String takeImage();
-    static void takeImageMQtt();
+    
     static void startCameraServer();
     static void stopCameraServer();
      

@@ -10,7 +10,7 @@ WiFiClass *MQTTEvent::WiFi;
 
 void MQTTEvent::callback(char *topic, byte *payload, unsigned int length)
 {
-    Serial.println("MQTTEvent::Message arrived on topic: ");
+    Serial.println("MQTTEvent::Message arrived on topic: " + String(topic));
     StaticJsonDocument<256> doc;
     deserializeJson(doc, payload, length);
     JsonObject payload_json = doc.as<JsonObject>();
@@ -39,29 +39,38 @@ void MQTTEvent::callback(char *topic, byte *payload, unsigned int length)
     {
         MQTTEvent::onCallBackDeviceRestart();
     }
-    if (String(topic) == "device/config")
+    if (String(topic) == "device/pir/config")
     {
         MQTTEvent::onCallBackSetConfig(payload_json, length);
     }
 
-    if (String(topic) == "device/control")
+    if (String(topic) == "device/camera/config")
     {
         MQTTEvent::onCallBackDeviceControl(payload_json, length);
     }
 }
 void MQTTEvent::onCallBackDeviceControl(JsonObject payload_json, unsigned int length)
 {
+    // int timoutTimer = payload_json["timoutTimer"].as<int>();
+    // if (timoutTimer >= 0)
+    // {
+    //     ESP32Camera::timoutTimer = timoutTimer;
+    //     Serial.println("MQTTEvent:onCallBackDeviceControl");
+    //     return;
+    // }
+
     sensor_t *s = esp_camera_sensor_get();
-   
-
-    const char* variable = payload_json["sensor"]["var"].as<char*>();
-    const int val= payload_json["sensor"]["val"].as<int>() ;
- 
-
+    const char *variable = payload_json["sensor"]["var"].as<char *>();
+    const int val = payload_json["sensor"]["val"].as<int>();
     int res = 0;
+
+    Serial.println("onCallBackDeviceControl:val" + val);
     if (!strcmp(variable, "framesize"))
     {
+        Serial.println(variable);
+        Serial.println("onCallBackDeviceControl:val" + val);
         if (s->pixformat == PIXFORMAT_JPEG)
+
             res = s->set_framesize(s, (framesize_t)val);
     }
     else if (!strcmp(variable, "quality"))
@@ -114,11 +123,12 @@ void MQTTEvent::onCallBackDeviceControl(JsonObject payload_json, unsigned int le
 
 void MQTTEvent::setSubScribe()
 {
+    MQTTEvent::mqttClient->subscribe("device/camera/config");
     MQTTEvent::mqttClient->subscribe("device/led");
     MQTTEvent::mqttClient->subscribe("device/camera/take-image");
     MQTTEvent::mqttClient->subscribe("device/camera/take-image-mqtt");
     MQTTEvent::mqttClient->subscribe("device/camera/stream");
-    MQTTEvent::mqttClient->subscribe("device/config");
+    MQTTEvent::mqttClient->subscribe("device/pir/config");
     MQTTEvent::mqttClient->subscribe("device/scan-connect");
     MQTTEvent::mqttClient->subscribe("device/restart");
     MQTTEvent::mqttClient->subscribe("device/control");
@@ -159,8 +169,8 @@ void MQTTEvent::onDeviceConnected()
     doc["ip_address"] = MQTTEvent::ip_address;
     // doc["led_state"] = MQTTEvent::ledState;
     doc["RSSI"] = MQTTEvent::WiFi->RSSI();
-    doc["PIR:Work"] = PIR::work;
-    doc["LED:State"] = LED::ledState;
+    doc["PIR_Work"] = PIR::work;
+    doc["LED_State"] = LED::ledState;
     // JsonArray data = doc.createNestedArray("data");
     // data.add(48.756080);
     // data.add(2.302038);
@@ -189,13 +199,13 @@ void MQTTEvent::onCallBackSetConfig(JsonObject payload_json, unsigned int length
 
     StaticJsonDocument<256> doc;
     doc["mac_address"] = MQTTEvent::WiFi->macAddress();
-    doc["mac_address"] = MQTTEvent::ip_address;
+    doc["ip_address"] = MQTTEvent::ip_address;
     doc["message"] = "onCallBackSetConfig";
     char payload[256];
     serializeJson(doc, payload);
 
     Serial.println("MQTTEvent:onCallBackSetConfig");
-    MQTTEvent::mqttClient->publish("device/config", payload);
+    MQTTEvent::mqttClient->publish("device/config/complete", payload);
 }
 
 void MQTTEvent::oncallBackTakeImage(JsonObject payload_json, unsigned int length)
@@ -210,7 +220,6 @@ void MQTTEvent::oncallBackTakeImage(JsonObject payload_json, unsigned int length
     else
     {
         Serial.println("MQTTEvent:oncallBackTakeImage takeImageMQtt ");
-        ESP32Camera::takeImageMQtt();
     }
 }
 

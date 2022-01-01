@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "..\\esp32-cam-server"
+		},
+		{
+			"path": "C:\\Users\\itiwa\\Desktop\\angular\\esp32-dashboarddddd"
 		}
 	],
 	"settings": {

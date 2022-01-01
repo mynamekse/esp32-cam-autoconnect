@@ -12,7 +12,7 @@ Copyright (c) 2020 Hieromon Ikasamo.
 This software is released under the MIT License.
 https://opensource.org/licenses/MIT
 */
-//dddddddddddddddddddd
+// dddddddddddddddddddd
 #if defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
@@ -23,6 +23,7 @@ https://opensource.org/licenses/MIT
 #include <WiFi.h>
 #define GET_CHIPID() ((uint16_t)(ESP.getEfuseMac() >> 32))
 #endif
+
 #include <AutoConnect.h>
 #include <ESP32Camera.h>
 #include <MQTTEvent.h>
@@ -438,16 +439,18 @@ void setup()
   }
   LED::setupPIN(4);
   LED::setupPIN(2);
+  LED::setupPIN(14);
+  LED::setupPIN(15);
+  LED::setupPIN(13);
   PIR::pin = 12;
   PIR::setup();
   PIR::setOnDetact(call_backDetect_PIR);
-  PIR::enable=true;
-  PIR::work=true;
+  PIR::enable = true;
+  PIR::work = true;
   Serial.begin(115200);
   Serial.println();
   MQTTEvent::mqttClient = &mqttClient;
   MQTTEvent::mqttClient->setCallback(MQTTEvent::callback);
-
 #if defined(ARDUINO_ARCH_ESP8266)
   FlashFS.begin();
 #elif defined(ARDUINO_ARCH_ESP32)
@@ -486,8 +489,7 @@ void setup()
   if (portal.begin())
   {
     config.bootUri = AC_ONBOOTURI_HOME;
-    Serial.println("connected:" + WiFi.SSID());
-
+    Serial.println("connected wifi ssid :" + WiFi.SSID());
     Serial.println("IP:" + WiFi.localIP().toString());
   }
   else
@@ -497,14 +499,14 @@ void setup()
   }
 
   WiFiWebServer &webServer = portal.host();
-  //ESP32CameraHTTP::&portal=portal.host();
+  // ESP32CameraHTTP::&portal=portal.host();
   webServer.on("/", handleRoot);
   webServer.on(AUX_CLEAR_URI, handleClearChannel);
   webServer.on(F("/status_handler"), HTTP_GET, status_handler);
-  //webServer.on("/capture",HTTP_GET,ESP32CameraHTTP::handleCapture);
+  // webServer.on(F("/status_handler"),HTTP_GET,ESP32CameraHTTP::handleCapture);
   ESP32CameraHTTP::startServer();
 }
-//eeeeeeeeeeeeeeeeeeeeeee
+// eeeeeeeeeeeeeeeeeeeeeee
 void loop()
 {
   if (WiFi.status() == WL_CONNECTED)
@@ -526,7 +528,6 @@ void loop()
     {
       mqttClient.loop();
       PIR::loop();
-    
     }
   }
 

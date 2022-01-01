@@ -35,6 +35,7 @@
 String ESP32Camera::serverIP;
 String ESP32Camera::serverPath;
 int ESP32Camera::serverPort ;
+int ESP32Camera::timoutTimer=3000;
 WiFiClient ESP32Camera::wifiClient;
 
 String ESP32Camera::takeImage()
@@ -85,33 +86,31 @@ String ESP32Camera::takeImage()
         ESP32Camera::wifiClient.print(tail);
 
         esp_camera_fb_return(fb);
+ 
+        long startTimer = millis();
+        boolean state = false;
 
-        // int timoutTimer = 10000;
-        // long startTimer = millis();
-        // boolean state = false;
-
-        // while ((startTimer + timoutTimer) > millis()) {
-        //     Serial.print(".");
-        //     delay(100);
-        //     while (ESP32Camera::wifiClient.available()) {
-        //         char c = ESP32Camera::wifiClient.read();
-        //         if (c == '\n') {
-        //             if (getAll.length() == 0) {
-        //                 state = true;
-        //             }
-        //             getAll = "";
-        //         } else if (c != '\r') {
-        //             getAll += String(c);
-        //         }
-        //         if (state == true) {
-        //             getBody += String(c);
-        //         }
-        //         startTimer = millis();
-        //     }
-        //     if (getBody.length() > 0) {
-        //         break;
-        //     }
-        // }
+        while ((startTimer + ESP32Camera::timoutTimer) > millis()) {
+         
+            while (ESP32Camera::wifiClient.available()) {
+                char c = ESP32Camera::wifiClient.read();
+                if (c == '\n') {
+                    if (getAll.length() == 0) {
+                        state = true;
+                    }
+                    getAll = "";
+                } else if (c != '\r') {
+                    getAll += String(c);
+                }
+                if (state == true) {
+                    getBody += String(c);
+                }
+                startTimer = millis();
+            }
+            if (getBody.length() > 0) {
+                break;
+            }
+        }
         Serial.println();
         ESP32Camera::wifiClient.stop();
 
@@ -135,47 +134,7 @@ String ESP32Camera::takeImage()
     return getBody;
 }
 
-void ESP32Camera::takeImageMQtt()
-{
-    camera_fb_t *fb = NULL;
-    fb = esp_camera_fb_get();
-    if (!fb)
-    {
-        Serial.println("Camera capture failed");
-        return;
-    }
 
-    const char *pic_buf = (const char *)(fb->buf);
-
-    // if (MQTT_MAX_PACKET_SIZE == 128) {
-    //     //SLOW MODE (increase MQTT_MAX_PACKET_SIZE)
-    //     if (MQTTEvent::mqttClient->publish_P("device/image", fb->buf, fb->len, false)) {
-    //         Serial.println("publish_P succcess ");
-    //     }
-
-    // } else {
-    //     //FAST MODE (increase MQTT_MAX_PACKET_SIZE)
-    //     if (MQTTEvent::mqttClient->publish("device/image", fb->buf, fb->len, false)) {
-    //         Serial.println("publish succcess ");
-    //     }
-    // }
-    // MQTTEvent::mqttClient->publish("device/image", pic_buf, fb->len);
-    Serial.println("publish device/image ");
-     // String imgDataB64 = base64::encode(fb->buf, fb->len);
-    uint16_t packetIdPubTemp = MQTTEvent::mqttClient->publish("device/image",  fb->buf, fb->len, false);
-
-    if (!packetIdPubTemp)
-    {
-        Serial.println("Sending Failed! err: " + String(packetIdPubTemp));
-    }
-    else
-    {
-        Serial.println("MQTT Publish succesful");
-    }
-
-    Serial.println("CLIC");
-    esp_camera_fb_return(fb);
-}
 
 String ESP32Camera::_STREAM_CONTENT_TYPE;
 String ESP32Camera::_STREAM_BOUNDARY;
@@ -211,13 +170,15 @@ bool ESP32Camera::initCamera()
     // ESP32Camera::_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
     if (psramFound())
     {
-        config.frame_size = FRAMESIZE_XGA;  //8-13  VGA SVGA(9 800x600)   XGA(1080)
+        config.frame_size = FRAMESIZE_SVGA;
+          //8-13  VGA SVGA(9 800x600)   XGA(1080)
         config.jpeg_quality = 10;
         config.fb_count = 2;
+   
     }
     else
     {
-        config.frame_size = FRAMESIZE_XGA;
+        config.frame_size = FRAMESIZE_VGA;
         config.jpeg_quality = 12;
         config.fb_count = 1;
     }
